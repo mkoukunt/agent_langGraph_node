@@ -1,5 +1,6 @@
 import { StateGraph, START, END, interrupt,MessagesAnnotation } from "@langchain/langgraph";
 import { fetchData, findApi, getreasoning } from "./apiSvc";
+import { AIMessage, SystemMessage } from "@langchain/core/messages";
 // 1. Define the Graph State
 // This represents the "memory" that flows between nodes.
 const graphState = {
@@ -12,12 +13,12 @@ const graphState = {
 // 2. Define a Node
 // A node is just a function that takes the current state and returns an update.
 const reasoningNode = async (state: any) => {  
-  interrupt({}); // This will stop the graph execution until we call resume() from the UI.
+  
    let data;
    data  = await getreasoning(state['messages'][0]['content']);  
-   data=data.slice(3);
+   data=data.slice(4);
   return { 
-    messages: [{ role: "reasoning", content: data }] 
+    messages: [new AIMessage(data)] 
   };
 };
 
@@ -25,7 +26,7 @@ const findApiNode = async (state: any) => {
    let data;
    data  = await findApi(state['messages'][1]['content']);  
   return { 
-    messages: [{ role: "findApi", content: data }] 
+    messages: [new AIMessage(data)] 
   };
 };
 
@@ -33,10 +34,10 @@ const findDataNode = async (state: any) => {
   
    let data;
    console.log("DATA ============",state)
-   data  = await fetchData(state['messages'][2]['content'].split(" ")[1],state['messages'][0]['apiHost'], state['messages'][0]['accessToken']);
-  
+   //data  = await fetchData(state['messages'][2]['content'].split(" ")[1],state['messages'][0]['apiHost'], state['messages'][0]['accessToken']);
+  data  = await fetchData(state['messages'][2]['content'].split(" ")[1],"https://crexnmsdev1.solint.net/ns-api/v2", '316d192a047855cc507ff378f59711c0');
   return { 
-    messages: [{ role: "findData", content: data }] 
+    messages: [new SystemMessage(data)] 
   };
 };
 
@@ -51,4 +52,4 @@ const workflow = new StateGraph(MessagesAnnotation)
     .addEdge("findApi", "fetchData")           
   .addEdge("fetchData", END);         
 
-  export const helloWorldGraph = workflow.compile();
+  export const ndpAgent = workflow.compile();
