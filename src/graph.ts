@@ -1,4 +1,4 @@
-import { StateGraph, START, END, interrupt,MessagesAnnotation } from "@langchain/langgraph";
+import { StateGraph, START, END, interrupt,MessagesAnnotation, MemorySaver } from "@langchain/langgraph";
 import { fetchData, findApi, getreasoning } from "./apiSvc";
 import { AIMessage, SystemMessage } from "@langchain/core/messages";
 // 1. Define the Graph State
@@ -13,10 +13,11 @@ const graphState = {
 // 2. Define a Node
 // A node is just a function that takes the current state and returns an update.
 const reasoningNode = async (state: any) => {  
-  
+  // This will allow us to inspect the state at this point in the graph
    let data;
    data  = await getreasoning(state['messages'][0]['content']);  
    data=data.slice(4);
+    interrupt("reasoningNode");
   return { 
     messages: [new AIMessage(data)] 
   };
@@ -51,5 +52,5 @@ const workflow = new StateGraph(MessagesAnnotation)
    .addEdge("reasoning", "findApi") 
     .addEdge("findApi", "fetchData")           
   .addEdge("fetchData", END);         
-
-  export const ndpAgent = workflow.compile();
+const checkpointer = new MemorySaver();
+  export const ndpAgent = workflow.compile({checkpointer});
