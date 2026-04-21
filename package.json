@@ -1,0 +1,25 @@
+{
+  "name": "agent_langgraph_node",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.6.0",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@langchain/core": "^1.1.40",
+    "@langchain/langgraph": "^1.2.9",
+    "axios": "^1.15.1",
+    "express": "^5.2.1"
+  }
+}

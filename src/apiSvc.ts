@@ -15,7 +15,7 @@ export const findApi = async (qn:string): Promise<string> => {
 
 export const fetchData = async (path:string, apiHost:string, accessToken:string): Promise<string> => {
   const nsApiClient = axios.create({
-    baseURL: apiHost, 
+    baseURL: apiHost+"/ns-api/v2", 
   });
   const { data } = await nsApiClient.get<string>(apiHost+path,{
   headers: {
