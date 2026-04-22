@@ -24,7 +24,7 @@ const reasoningNode = async (state: any) => {
   let data;
   data = await getreasoning(state["messages"][0]["content"]);
   data = data.slice(4);
- // interrupt("reasoningNode");
+  interrupt("reasoningNode");
   return {
     messages: [new AIMessage(data)],
   };
@@ -38,14 +38,16 @@ const findApiNode = async (state: any) => {
   };
 };
 
-const findDataNode = async (state: any) => {
+const findDataNode = async (state: any, config: any) => {
   let data;
-  console.log("DATA ============", state);   
+  console.log("DATA ============", state);
   data = await fetchData(
-    state["messages"][2]["content"].split(" ")[1], state["messages"][0]["apiHost"], state["messages"][0]["accessToken"]
+    state["messages"][2]["content"].split(" ")[1],
+    config.configurable.apiHost,
+    config.configurable.accessToken,
   );
   return {
-    messages: [new SystemMessage(data)],
+    messages: [new SystemMessage(JSON.stringify(data))],
   };
 };
 

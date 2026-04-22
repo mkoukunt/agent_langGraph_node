@@ -23,5 +23,5 @@ export const fetchData = async (path:string, apiHost:string, accessToken:string)
   }
 }); 
   console.log(data)
-  return {data}.data; // Adjust based on your API response structure
+  return data; // Adjust based on your API response structure
 };
