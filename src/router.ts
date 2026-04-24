@@ -1,33 +1,75 @@
 import { ndpAgent } from "./graph";
+import { Command } from "@langchain/langgraph";
 
 const express = require("express");
 const router = express.Router();
-  let thread_id = 100;
+let thread_id = 100;
 // Route: GET /users/
 router.post("/", async (req: any, res: any) => {
   const body = req.body;
-  const apiHost = "https://" + body.apiHost+"/ns-api/v2";
+  const apiHost = "https://" + body.apiHost + "/ns-api/v2";
   const accessToken = body.accessToken;
-  const qn=body.qn;
+  const qn = body.qn;
+  const tId = body.tId;
 
-  const config = { configurable: { thread_id: thread_id++,apiHost: apiHost,accessToken: accessToken } };
-  await ndpAgent.updateState(config, { 
-  messages: []
-  
-});
-  let data = await ndpAgent.invoke(
+  const config = {
+    configurable: {
+      thread_id: tId,
+      apiHost: apiHost,
+      accessToken: accessToken,
+    },
+  };
+  await ndpAgent.updateState(config, {
+    messages: [],
+  });
+  let data: any = await ndpAgent.invoke(
     {
-      messages: [{ role: "human", content: qn}],
+      messages: [{ role: "human", content: qn }],
     },
     config,
   );
-  let r=data["messages"]?.[3]?.["content"];
- res.send(r);
+  console.log(data.__interrupt__);
+  if (data.__interrupt__) {
+    console.log(JSON.stringify(data.__interrupt__[0]));
+    res.send({
+      interrupted: true,
+      thread_id: config.configurable.thread_id,
+      interrupt: data.__interrupt__[0],
+    });
+  }
+  let r = data["messages"]?.[3]?.["content"];
+  res.send(r);
 });
 
-// Route: GET /users/profile
-router.get("/profile", (req: any, res: { send: (arg0: string) => void }) => {
-  res.send("User profile");
-});
+// Route: POST /resume
+router.post("/resume", async (req: any, res: any) => {
+  const {
+    thread_id: tid,
+    apiHost: rawHost,
+    accessToken,
+    resume_value,
+  } = req.body;
+  const apiHost = rawHost?.startsWith("https://")
+    ? rawHost
+    : "https://" + rawHost + "/ns-api/v2";
 
+  const config = { configurable: { thread_id: tid } };
+
+  let data: any = await ndpAgent.invoke(
+    new Command({ resume: resume_value ?? true }),
+    config,
+  );
+
+  if (data.__interrupt__) {
+    res.send({
+      interrupted: true,
+      thread_id: tid,
+      interrupt: data.__interrupt__[0],
+    });
+    return;
+  }
+
+   let r = data["messages"]?.[3]?.["content"];
+  res.send(r);
+});
 module.exports = router;

@@ -22,6 +22,6 @@ export const fetchData = async (path:string, apiHost:string, accessToken:string)
     'Authorization': `Bearer ${accessToken}`    
   }
 }); 
-  console.log(data)
+  //console.log(data)
   return data; // Adjust based on your API response structure
 };
