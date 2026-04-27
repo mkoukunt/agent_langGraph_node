@@ -43,17 +43,16 @@ router.post("/", async (req: any, res: any) => {
 
 // Route: POST /resume
 router.post("/resume", async (req: any, res: any) => {
-  const {
-    thread_id: tid,
-    apiHost: rawHost,
-    accessToken,
-    resume_value,
+  let {
+    tId,
+    apiHost,  
+    accessToken,  
+    resume_value
   } = req.body;
-  const apiHost = rawHost?.startsWith("https://")
-    ? rawHost
-    : "https://" + rawHost + "/ns-api/v2";
+   apiHost = "https://" + apiHost + "/ns-api/v2";
 
-  const config = { configurable: { thread_id: tid } };
+  const config = { configurable: { thread_id: tId , apiHost: apiHost,
+      accessToken: accessToken} };
 
   let data: any = await ndpAgent.invoke(
     new Command({ resume: resume_value ?? true }),
@@ -63,7 +62,7 @@ router.post("/resume", async (req: any, res: any) => {
   if (data.__interrupt__) {
     res.send({
       interrupted: true,
-      thread_id: tid,
+      thread_id: tId,
       interrupt: data.__interrupt__[0],
     });
     return;

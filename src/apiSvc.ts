@@ -1,11 +1,10 @@
 import axios from 'axios';
 import { apiClient } from './apiClient';
 
-export const getreasoning = async (qn:string): Promise<string> => {
+export const getreasoning = async (qn:string): Promise<any> => {
   console.log('qn is', qn);
-  const { data } = await apiClient.post<string>('/generate',{question:{qn}}); // Adjust the endpoint as needed
-  console.log('data is', data);
-  return {data}.data; // Adjust based on your API response structure
+  let data  = await apiClient.post<string>('/generate',{question:{qn}}); // Adjust the endpoint as needed 
+  return data; // Adjust based on your API response structure
 };
 
 export const findApi = async (qn:string): Promise<string> => {  
