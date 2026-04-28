@@ -5,7 +5,7 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 function md5(data) {
   return crypto.createHash('md5').update(data).digest('hex');
 }
-async function sendDigestRequest(url) {
+export async function sendDigestRequest(url) {
     response = await fetch(url);
   
   if (response.status === 401) {
@@ -26,7 +26,7 @@ async function sendDigestRequest(url) {
     });
   }
   
-  console.log(await response.text());
+  return await response.text();
 }
 
 
