@@ -9,6 +9,7 @@ import {
 import { fetchData, findApi, getreasoning } from "./apiSvc";
 import { AIMessage, HumanMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
 import DigestClient from 'digest-fetch';
+import { query } from "./db";
 // 1. Define the Graph State
 // This represents the "memory" that flows between nodes.
 const graphState = {
@@ -71,12 +72,18 @@ const validateNode = async (state: any) => {
   const messages = state.messages;
   const lastMessage = messages[messages.length - 1];
   // if (lastMessage instanceof ToolMessage) {
-  const obj = JSON.parse(lastMessage.content);
-  let data = { name: "name", value: "value" };
+  const obj = JSON.parse(lastMessage.content); 
   let txt;
    let results = [];
-  if (obj.arguments.subtask == "domain defaults") {
-    console.log("Domain defaults validated, interrupting workflow");
+  if (obj.arguments.subtask == "brand defaults") {
+    let mac="ec74d7366a4a";
+    const phones_config: any[] = await query("SELECT * FROM phones_config  WHERE mac = ?", [mac]);
+    const brand=phones_config[0].brand.split(" ")[0];
+    const model=phones_config[0].brand.split(" ")[1];
+     const server=phones_config[0].server;
+    const brandOverrides: any[] = await query("SELECT * FROM defaults WHERE brand = ? AND (server='default' OR server =?)", [brand,server]);
+    const brandOverridesMap = new Map<string, any>(brandOverrides.map(o => [o.default_name, o]));    
+    const brandOverridesKeysSet = new Set<string>(brandOverridesMap.keys());
     const username = "52bt0r";
     const password = "f393e2687129";
 
@@ -100,24 +107,21 @@ const validateNode = async (state: any) => {
       configmap.set(line,line)
      });
 
-        const params= [{name:"<P1721>",value:"1"},{name:"<P4428>",value:"1"},{name:"<P2648>",value:"1"},,{name:"<P2330>",value:"1"},,{name:"<P2367>",value:"1"}];
-       const allKeys:any = [...new Set(params.flatMap(obj => obj.name))];
-       const allKeysSet = new Set(params.flatMap(obj => obj.name));
-       const regex = new RegExp(allKeys.join("|"), "gi");
+      const regex = new RegExp([...brandOverridesKeysSet].map(k => `<${k}>`).join("|"), "gi");
        const matches:any = txt.matchAll(regex);
-        
+
        for (const match of matches) {
          console.log(`Found ${match[0]} at index ${match.index}`);
          const fullLine = getFullLine(txt, match.index);
          console.log(`Full line: ${fullLine}`);
-         let result = { name: match[0], line: fullLine, result: "found" };
+         let result = { name: match[0].replace(/[<>]/g, ""), line: fullLine, result: "found",server:brandOverridesMap.get( match[0].replace(/[<>]/g, "")).server };
          results.push(result);
-          allKeysSet.delete(match[0]);
+         brandOverridesKeysSet.delete(match[0].replace(/[<>]/g, ""));
        }
-          allKeysSet.forEach((element: any) => {
-            let result = { name: element, line: "", result: "not found" };
-            results.push(result);
-        });
+       brandOverridesKeysSet.forEach((element: any) => {
+         let result = { name: element, line: "", result: "not found",server:brandOverridesMap.get( element).server };
+         results.push(result);
+       });
     }
 console.log
 
