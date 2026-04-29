@@ -49,19 +49,20 @@ function getFullLine(text:any, index:any) {
 // A node is just a function that takes the current state and returns an update.
 const reasoningNode = async (state: any) => {
   // This will allow us to inspect the state at this point in the graph
-  let data:any  = await fetch('http://rabini.org:5000/generate', {method:'POST',headers: { 'Content-Type': 'application/json' },body:JSON.stringify({question:state["messages"][0]["content"]})}); 
+  let data:any  = await fetch('https://rabini.org:5000/generate', {method:'POST',headers: { 'Content-Type': 'application/json' },body:JSON.stringify({question:state["messages"][0]["content"]})}); 
  // data = await getreasoning(state["messages"][0]["content"]);
   data = await data.json();
+  console.log("reasoningNode data ============", data[0]);
   //interrupt('{"message":"Please approve this action"}');
   return {
-    messages: [{role:"ai",content:data}],
+    messages: [{role:"ai",content:data[0]}],
   };
 };
 
 const findToolNode = async (state: any) => {
  // let data:any;
  // data = await findApi(state["messages"][1]["content"][0]);
-   let data:any  = await fetch('http://rabini.org:5001/generate', {method:'POST',headers: { 'Content-Type': 'application/json' },body:JSON.stringify({question:state["messages"][1]["content"]})}); 
+   let data:any  = await fetch('https://rabini.org:5001/generate', {method:'POST',headers: { 'Content-Type': 'application/json' },body:JSON.stringify({question:state["messages"][1]["content"]})}); 
     data = await data.json();
    return {
     messages: [new ToolMessage({ tool_call_id: "findToolNode", content: JSON.stringify(data) })],
@@ -75,7 +76,7 @@ const validateNode = async (state: any) => {
   const obj = JSON.parse(lastMessage.content); 
   let txt;
    let results = [];
-  if (obj.arguments.subtask == "brand defaults") {
+  if (obj.arguments.subtask == "brand overrides") {
     let mac="ec74d7366a4a";
     const phones_config: any[] = await query("SELECT * FROM phones_config  WHERE mac = ?", [mac]);
     const brand=phones_config[0].brand.split(" ")[0];
