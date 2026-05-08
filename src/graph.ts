@@ -101,7 +101,7 @@ const validateNode = async (state: any) => {
   const model = phones_config[0].brand.split(" ")[1];
   const server = phones_config[0].server;
   let txt;
-  let results = [];
+  let results:{ results: any[] }={ results: []};
   if (
     obj.arguments.subtask == "brand overrides" ||
     obj.arguments.subtask == "model overrides"

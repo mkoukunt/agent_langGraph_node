@@ -7,7 +7,7 @@ async function getFullLine(text: string, index: number): Promise<string> {
   return text.substring(start, end);
 }
 
-async function validate( phones_config:any[],subtask:string): Promise<any[]> {
+async function validate( phones_config:any[],subtask:string): Promise<{ results: any[] }> {
 
   const brand = phones_config[0].brand.split(" ")[0];
   const model = phones_config[0].brand.split(" ")[1];
@@ -41,14 +41,22 @@ async function validate( phones_config:any[],subtask:string): Promise<any[]> {
   const txt = await res.text();
 
   const regex = new RegExp([...remaining].join("|"), "gi");
+  const testResults: {
+    mac: string;
+    brand: string;
+    model: string;
+    results: any[];
+  } = { mac: mac, brand: brand, model: model, results: [] };
   const results: any[] = [];
 
   for (const match of txt.matchAll(regex)) {
     const name = match[0];
-    const fullLine = getFullLine(txt, match.index!);
+    const fullLine = await getFullLine(txt, match.index!);
+    const [override, value] = fullLine.split("=").map(s => s.trim());
     results.push({
       name,
-      line: fullLine,
+      expValue:   overridesMap.get(name)?.default_value,   
+      line: value,
       result: "found",
       server: overridesMap.get(name)?.server,
     });
@@ -58,13 +66,15 @@ async function validate( phones_config:any[],subtask:string): Promise<any[]> {
   remaining.forEach((name) => {
     results.push({
       name,
-      line: "",
+      expValue:"n/a",
+      line: "n/a",
       result: "not found",
       server: overridesMap.get(name)?.server,
     });
   });
 
-  return results;
+  testResults.results=results;
+  return testResults;
 }
 
 const yealink = { validate };
