@@ -1,10 +1,1 @@
-function multiply(values:number[]|undefined,factor:number):number[]|undefined{
-
-    if(!values){
-        return values;
-    }
-    else{
-        return values;
-    }
-
-}
+type GreetFunction=(a:string) =>void;

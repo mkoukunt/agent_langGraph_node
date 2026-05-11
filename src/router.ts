@@ -73,23 +73,29 @@ router.post("/resume", async (req: any, res: any) => {
   res.send(r);
 });
 // Route: GET /fetch
-router.get("/fetch", async (req: any, res: any) => {
+router.post("/fetch", async (req: any, res: any) => {
   try {
-    const qn = req.query.qn;
-    const { mac, subtask, limit } = req.query;
-    const filter: any = {};
-    if (qn) filter.qn = qn;
-    if (mac) filter.mac = mac;
-    if (subtask) filter.subtask = subtask;
+    const body = req.body;
+    const tId = body.tId;
+    const qn = body.qn;
+    const config = {
+      configurable: {
+        thread_id: tId,
+      },
+    };
+    await ndpAgent.updateState(config, {
+      messages: [],
+    });
 
-    const reports = await getCollection("reports");
-    const docs = await reports
-      .find(filter)
-      .sort({ createdAt: -1 })
-      .limit(Number(limit) || 50)
-      .toArray();
-
-    res.send(docs);
+    let data: any = await ndpAgent.invoke(
+      {
+        messages: [{ role: "human", content: qn }],
+      },
+      config,
+    );
+  let r = data["messages"]?.[3]?.["content"];
+  res.send(r);
+   
   } catch (err: any) {
     res.status(500).send({ error: err.message });
   }

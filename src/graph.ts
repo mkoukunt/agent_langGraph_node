@@ -34,6 +34,8 @@ function route(state: any) {
   const obj = JSON.parse(lastMessage.content);
   if (obj.name == "validate") {
     return "validate";
+  } else if (obj.name == "fetch") {
+    return "fetchReportNode";
   }
   //  }
 
@@ -54,6 +56,11 @@ function getFullLine(text: any, index: any) {
 // 2. Define a Node
 // A node is just a function that takes the current state and returns an update.
 const reasoningNode = async (state: any) => {
+//return {
+  //      messages: [{ role: "ai", content: "fetch the failed reports for the brand yealink" }],
+    //};
+
+
   // This will allow us to inspect the state at this point in the graph
   let llm: any = process.env.LLM_HOST;
   let data: any = await fetch(llm, {
@@ -68,12 +75,14 @@ const reasoningNode = async (state: any) => {
   return {
     messages: [{ role: "ai", content: data[0] }],
   };
+
+  
 };
 
 const findToolNode = async (state: any) => {
   // let data:any;
   // data = await findApi(state["messages"][1]["content"][0]);
-  let data: any = await fetch("https://rabini.org:5001/generate", {
+  let data: any = await fetch("http://rabini.org:5001/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question: state["messages"][1]["content"] }),
@@ -127,24 +136,29 @@ const validateNode = async (state: any) => {
   };
 };
 
-const findDataNode = async (state: any, config: any) => {
-  let data;
-  //console.log("DATA ============", state);
-  data = await fetchData(
-    state["messages"][2]["content"].split(" ")[1],
-    config.configurable.apiHost,
-    config.configurable.accessToken,
-  );
-  return {
-    messages: [new SystemMessage(JSON.stringify(data))],
-  };
+const fetchReportNode = async (state: any, config: any) => {
+   const messages = state.messages;
+   const lastMessage = messages[messages.length - 1];
+   const obj = JSON.parse(lastMessage.content);
+   const { mac, brand } = obj.arguments;
+
+   const filter: any = {};
+
+   if (mac) filter.mac = mac;
+   if (brand) filter.brand = brand;
+
+   const reports = await getCollection("reports");
+   const docs = await reports.find(filter).sort({ createdAt: -1 }).toArray();
+   return {
+     messages: [new SystemMessage(JSON.stringify(docs))],
+   };
 };
 
 // 3. Construct the Graph
 const workflow = new StateGraph(MessagesAnnotation)
   .addNode("reasoning", reasoningNode)
   .addNode("findTool", findToolNode)
-  //.addNode("fetchData", findDataNode)
+  .addNode("fetchReportNode", fetchReportNode)
   .addNode("validate", validateNode)
   .addEdge(START, "reasoning")
   .addEdge("reasoning", "findTool")
