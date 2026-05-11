@@ -17,6 +17,7 @@ import DigestClient from "digest-fetch";
 import { query } from "./db";
 
 import yealink from "./yealink";
+import { getCollection } from "./mongo";
 // 1. Define the Graph State
 // This represents the "memory" that flows between nodes.
 const graphState = {
@@ -110,7 +111,10 @@ const validateNode = async (state: any) => {
       results = await yealink.validate(phones_config, obj.arguments.subtask);
   ///  }
   }
-  console.log;
+
+  const reports = await getCollection("reports");
+  await reports.insertOne(results);
+
 
   return {
     messages: [

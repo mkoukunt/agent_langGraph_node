@@ -1,5 +1,6 @@
 import { ndpAgent } from "./graph";
 import { Command } from "@langchain/langgraph";
+import { getCollection } from "./mongo";
 
 const express = require("express");
 const router = express.Router();
@@ -71,4 +72,27 @@ router.post("/resume", async (req: any, res: any) => {
    let r = data["messages"]?.[3]?.["content"];
   res.send(r);
 });
+// Route: GET /fetch
+router.get("/fetch", async (req: any, res: any) => {
+  try {
+    const qn = req.query.qn;
+    const { mac, subtask, limit } = req.query;
+    const filter: any = {};
+    if (qn) filter.qn = qn;
+    if (mac) filter.mac = mac;
+    if (subtask) filter.subtask = subtask;
+
+    const reports = await getCollection("reports");
+    const docs = await reports
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .limit(Number(limit) || 50)
+      .toArray();
+
+    res.send(docs);
+  } catch (err: any) {
+    res.status(500).send({ error: err.message });
+  }
+});
+
 module.exports = router;
