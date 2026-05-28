@@ -101,4 +101,15 @@ router.post("/fetch", async (req: any, res: any) => {
   }
 });
 
+
+router.post("/fetchManualApi", async (req: any, res: any) => {
+  try {
+    const reports = await getCollection("reports");
+    const docs = await reports.find().sort({ createdAt: -1 }).toArray();
+    res.send(docs);
+  } catch (err: any) {
+    res.status(500).send({ error: err.message });
+  }
+});
+
 module.exports = router;

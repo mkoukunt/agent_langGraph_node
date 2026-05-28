@@ -13,11 +13,14 @@ import {
   SystemMessage,
   ToolMessage,
 } from "@langchain/core/messages";
-import DigestClient from "digest-fetch";
+
 import { query } from "./db";
 
 import yealink from "./yealink";
 import { getCollection } from "./mongo";
+import polycom from "./polycom";
+import grandstream from "./grandstream";
+
 // 1. Define the Graph State
 // This represents the "memory" that flows between nodes.
 const graphState = {
@@ -32,9 +35,9 @@ function route(state: any) {
 
   // if (lastMessage instanceof ToolMessage) {
   const obj = JSON.parse(lastMessage.content);
-  if (obj.name == "validate") {
+  if (obj.function?.includes("run")) {
     return "validate";
-  } else if (obj.name == "fetch") {
+  } else if (obj.function?.includes("results")) {
     return "fetchReportNode";
   }
   //  }
@@ -56,13 +59,13 @@ function getFullLine(text: any, index: any) {
 // 2. Define a Node
 // A node is just a function that takes the current state and returns an update.
 const reasoningNode = async (state: any) => {
-//return {
-  //      messages: [{ role: "ai", content: "fetch the failed reports for the brand yealink" }],
-    //};
+return {
+        messages: [{ role: "ai", content: state["messages"][0]["content"] }],
+    };
 
 
   // This will allow us to inspect the state at this point in the graph
-  let llm: any = process.env.LLM_HOST;
+/*  let llm: any = process.env.LLM_HOST;
   let data: any = await fetch(llm, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -75,14 +78,14 @@ const reasoningNode = async (state: any) => {
   return {
     messages: [{ role: "ai", content: data[0] }],
   };
-
+*/
   
 };
 
 const findToolNode = async (state: any) => {
   // let data:any;
   // data = await findApi(state["messages"][1]["content"][0]);
-  let data: any = await fetch("http://rabini.org:5001/generate", {
+  let data: any = await fetch("https://rabini.org:5001/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question: state["messages"][1]["content"] }),
@@ -120,6 +123,21 @@ const validateNode = async (state: any) => {
       results = await yealink.validate(phones_config, obj.arguments.subtask);
   ///  }
   }
+  else if(obj.function=='run_config_diff_test'){
+    switch (brand?.toLowerCase()) {
+      case "yealink":
+        results = await yealink.configRegressionTest(phones_config, 'config diff');
+        break;
+      case "grandstream":
+         results = await grandstream.configRegressionTest(phones_config, obj.function);
+        break;
+      case "polycom":
+         results = await polycom.configRegressionTest(phones_config, obj.function);
+        break;
+      default:
+        results = { results: [] };
+    }
+  }
 
   const reports = await getCollection("reports");
   await reports.insertOne(results);
@@ -140,13 +158,48 @@ const fetchReportNode = async (state: any, config: any) => {
    const messages = state.messages;
    const lastMessage = messages[messages.length - 1];
    const obj = JSON.parse(lastMessage.content);
-   const { mac, brand } = obj.arguments;
+   const { mac, brand, status, date } = obj.arguments;
+
+   const filter: any = {};
+    if(obj.function=='get_config_diff_results'){
+        filter.subtask='config diff';
+    }
+ if(obj.function=='brand_overrides_tests'){
+        filter.subtask='brand_overrides';
+    }
+
+   if (mac) filter.mac = mac;
+   if (brand) filter.$expr = { $eq: [{ $toLower: "$brand" }, brand.toLowerCase()] };
+   if (date && /^\d{2}-\d{2}-\d{4}$/.test(date)) filter.date = date;
+   if (status && status == "passed") {
+     filter.status = "pass";
+   }
+   if (status && status == "failed") {
+     filter.status = "fail";
+   }
+   const reports = await getCollection("reports");
+   const docs = await reports.find(filter).sort({ createdAt: -1 }).toArray();
+   return {
+     messages: [new SystemMessage(JSON.stringify(docs))],
+   };
+};
+
+const validateConfigNode = async (state: any, config: any) => {
+   const messages = state.messages;
+   const lastMessage = messages[messages.length - 1];
+   const obj = JSON.parse(lastMessage.content);
+   const { mac, brand,subtask } = obj.arguments;
 
    const filter: any = {};
 
    if (mac) filter.mac = mac;
    if (brand) filter.brand = brand;
-
+   if (subtask && subtask == "passed") {
+     filter.status = "pass";
+   }
+   if (subtask && subtask == "failed") {
+     filter.status = "fail";
+   }
    const reports = await getCollection("reports");
    const docs = await reports.find(filter).sort({ createdAt: -1 }).toArray();
    return {
@@ -160,6 +213,7 @@ const workflow = new StateGraph(MessagesAnnotation)
   .addNode("findTool", findToolNode)
   .addNode("fetchReportNode", fetchReportNode)
   .addNode("validate", validateNode)
+   .addNode("validateConfigNode", validateConfigNode)
   .addEdge(START, "reasoning")
   .addEdge("reasoning", "findTool")
   .addConditionalEdges("findTool", route)
